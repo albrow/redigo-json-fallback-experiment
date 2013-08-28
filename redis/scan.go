@@ -15,6 +15,7 @@
 package redis
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -50,12 +51,13 @@ func convertAssignBytes(d reflect.Value, s []byte) (err error) {
 		d.SetString(string(s))
 	case reflect.Slice:
 		if d.Type().Elem().Kind() != reflect.Uint8 {
-			err = cannotConvert(d, s)
+			err = json.Unmarshal(s, d.Addr().Interface())
 		} else {
 			d.SetBytes(s)
 		}
 	default:
-		err = cannotConvert(d, s)
+		// fallback to json
+		err = json.Unmarshal(s, d.Addr().Interface())
 	}
 	return
 }
@@ -421,7 +423,16 @@ func flattenStruct(args Args, v reflect.Value) Args {
 	ss := structSpecForType(v.Type())
 	for _, fs := range ss.l {
 		fv := v.FieldByIndex(fs.index)
-		args = append(args, fs.name, fv.Interface())
+		if fv.Type().Kind() == reflect.Slice && fv.Type().Elem().Kind() != reflect.Uint8 {
+			j, err := json.Marshal(fv.Interface())
+			if err != nil {
+				panic(err)
+			}
+			args = append(args, fs.name, j)
+		} else {
+			args = append(args, fs.name, fv.Interface())
+		}
+
 	}
 	return args
 }

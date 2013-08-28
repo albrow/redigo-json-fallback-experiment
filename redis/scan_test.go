@@ -16,7 +16,7 @@ package redis_test
 
 import (
 	"fmt"
-	"github.com/garyburd/redigo/redis"
+	"github.com/stephenalexbrowne/redigo/redis"
 	"math"
 	"reflect"
 	"testing"
@@ -152,6 +152,10 @@ type s1 struct {
 	s0
 }
 
+type structWithSlice struct {
+	S []string
+}
+
 var scanStructTests = []struct {
 	title string
 	reply []string
@@ -160,6 +164,10 @@ var scanStructTests = []struct {
 	{"basic",
 		[]string{"i", "-1234", "u", "5678", "s", "hello", "p", "world", "b", "t", "Bt", "1", "Bf", "0", "X", "123", "y", "456"},
 		&s1{I: -1234, U: 5678, S: "hello", P: []byte("world"), B: true, Bt: true, Bf: false, s0: s0{X: 123, Y: 456}},
+	},
+	{"struct with slice",
+		[]string{"S", `["one", "two", "three"]`},
+		&structWithSlice{[]string{"one", "two", "three"}},
 	},
 }
 
@@ -208,6 +216,14 @@ var argsTests = []struct {
 	{"slice",
 		redis.Args{}.Add(1).AddFlat([]string{"a", "b", "c"}).Add(2),
 		redis.Args{1, "a", "b", "c", 2},
+	},
+	{"struct with slice",
+		redis.Args{}.AddFlat(struct {
+			S []string
+		}{
+			[]string{"one", "two", "three"},
+		}),
+		redis.Args{"S", []byte(`["one","two","three"]`)},
 	},
 }
 
